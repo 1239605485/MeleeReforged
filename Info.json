@@ -1,0 +1,10 @@
+{
+  "pkgId": "liuxin.melee.reforged",
+  "name": "近战重铸 · 木剑测试版",
+  "author": "liuxin",
+  "description": "0.1.0 测试版：单机木剑翡翠三连斩、轨迹命中与分层刀光。需要匹配所提供源码接口的 TEFKernel / KernelLoader。安装或更换版本后重启游戏；不支持运行中替换版本。尚待手机实测。",
+  "version": "0.1.0",
+  "versionCode": 1,
+  "dependence": [],
+  "support": {"android": {"arm64": true, "arm": false}}
+}
