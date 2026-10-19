@@ -10,6 +10,11 @@ inline Color premultiply(Color c) {
           static_cast<unsigned char>(int(c.g) * c.a / 255),
           static_cast<unsigned char>(int(c.b) * c.a / 255), c.a};
 }
+// Android XNA Color is laid out A,B,G,R (verified against the supplied dump).
+struct NativeColor { unsigned char a,b,g,r; };
+inline NativeColor toNativeColor(Color c) {
+  c=premultiply(c);return {c.a,c.b,c.g,c.r};
+}
 struct DrawCommand {
   Vec2 from, to;
   float width{};

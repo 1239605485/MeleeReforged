@@ -28,9 +28,9 @@ jobs:
           cmake --build build-android --parallel 2
           "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" -h build-android/libMeleeReforged.android.arm64.so
           "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm" -D build-android/libMeleeReforged.android.arm64.so | grep ' T create_kernel_mod$'
-          python3 tools/package.py --build-dir build-android --output dist/MeleeReforged-0.1.0-Android-arm64.zip
+          python3 tools/package.py --build-dir build-android --output dist/MeleeReforged-Android-arm64.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: MeleeReforged-0.1.0-Android-arm64-TEST
-          path: dist/MeleeReforged-0.1.0-Android-arm64.zip
+          name: MeleeReforged-Android-arm64
+          path: dist/MeleeReforged-Android-arm64.zip
           if-no-files-found: error

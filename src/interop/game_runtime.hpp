@@ -24,9 +24,17 @@ public:
   bool hitNpc(Handle, void **);
   void afterHit(Handle, void **);
   bool draw(Handle);
+  void drawBack(Handle);
+  void updateWaves(Handle,PlayerState &);
+  void launchWave(Handle,PlayerState &,Handle);
+  void drawWaves(Handle,const PlayerState &,Vec2,Handle);
+  void drawCarry(Handle,Handle,PlayerState &,bool);
+  void updateGenericCarry(Handle,PlayerState &,Handle);
+  bool drawGenericCarry(Handle,Handle,PlayerState &,bool);
   void impact(PlayerState &, Vec2);
   bool resourcesReady();
   void apply(Handle, PlayerState &);
+  void restorePose(Handle);
   void frame();
   void resetNpc(int);
   void renderFailure() { renderFailed_ = true; }

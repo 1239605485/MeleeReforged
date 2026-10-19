@@ -1,6 +1,7 @@
 #include "collision/damage_sweep.hpp"
 #include "combat/trajectory.hpp"
 #include "game_runtime.hpp"
+#include "weapons/wooden_sword_rules.hpp"
 #include <algorithm>
 namespace mr {
 static Rect rectOf(RuntimeApi &a, Handle npc) {
@@ -77,6 +78,12 @@ bool GameRuntime::hitNpc(Handle p, void **args) {
   s->pendingLife = api_.read<int>(Field::NpcLife, npc);
   s->pendingSlot = id;
   s->pendingAttack = sweep.attackId;
+  const auto &attack=sweep.attackId==s->current.attackId?s->current:s->previous;
+  auto power=woodenMeleePower(attack.charged,attack.combo);
+  auto &damage=*static_cast<int *>(args[2]);
+  auto &knockback=*static_cast<float *>(args[3]);
+  damage=scaleDamage(damage,power.damage);
+  knockback*=power.knockback;
   return false;
 }
 void GameRuntime::afterHit(Handle p, void **args) {
@@ -98,6 +105,7 @@ void GameRuntime::afterHit(Handle p, void **args) {
   s->pendingSlot = -1;
 }
 void GameRuntime::impact(PlayerState &s, Vec2 p) {
+  s.hitConfirmed=true;
   s.impacts[s.nextImpact++ % s.impacts.size()] = {p, s.lastTick, true};
 }
 } // namespace mr

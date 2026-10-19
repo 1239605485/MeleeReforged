@@ -1,10 +1,11 @@
 #include "interop/game_runtime.hpp"
 #include "mod_core.h"
 #include <cstdio>
-#include <dlfcn.h>
 #include <mutex>
 #include <string>
 extern "C" {
+// 1 requests residency; matching KernelLoader acknowledges with 2.
+__attribute__((visibility("default"))) int kernel_mod_residency_v1 = 1;
 __attribute__((visibility("default"))) void (*mod_logger_write)(int,
                                                                 const char *,
                                                                 const char *,
@@ -16,26 +17,15 @@ std::mutex logMutex;
 void init(kernel_mod_handle_t *h) {
   if (h && h->private_dir)
     logPath = std::string(h->private_dir) + "/melee_reforged_runtime.log";
-  // KernelLoader's void cleanup callback cannot veto dlclose. Keep this code
-  // resident so an in-flight or failed-to-remove native callback cannot point
-  // into unmapped memory. A process restart is required to replace this version.
-  static void *pin = nullptr;
-  if (!pin) {
-    pin = dlopen("libMeleeReforged.android.arm64.so", RTLD_NOW | RTLD_NOLOAD);
-    if (pin && dlsym(pin, "create_kernel_mod") !=
-                   reinterpret_cast<void *>(&create_kernel_mod)) {
-      dlclose(pin);
-      pin = nullptr;
-    }
-  }
-  if (!pin) {
-    mr::log("Cannot pin plugin lifetime; hooks disabled for unload safety.");
+  mr::log("MeleeReforged initialization entered.");
+  if (kernel_mod_residency_v1 != 2) {
+    mr::log("KernelLoader residency handshake missing; install the matching loader and restart.");
     return;
   }
   mr::runtime().start();
 }
 void cleanup(kernel_mod_handle_t *) { mr::runtime().stop(); }
-kernel_mod_info_t info{"liuxin.melee.reforged", 1, 1, "0.1.0"};
+kernel_mod_info_t info{"liuxin.melee.reforged", 8, 1, "0.5.0"};
 kernel_mod_info_t *getInfo() { return &info; }
 kernel_mod_ops_t ops{init, cleanup, getInfo};
 } // namespace

@@ -1,13 +1,91 @@
 #include "runtime_api.hpp"
 #include <cstring>
+#include <cstdio>
 #include <dlfcn.h>
 namespace mr {
-static const char *argumentName(const char *method, std::size_t i) {
+void log(const char *);
+namespace {
+// Resolve raw metadata APIs rather than sharing patch_method_signature_t
+// across independently versioned kernel and mod binaries.
+struct Metadata {
+  using Param = Handle (*)(Handle, unsigned);
+  using Unary = Handle (*)(Handle);
+  using Flag = bool (*)(Handle);
+  using Kind = int (*)(Handle);
+  using Name = const char *(*)(Handle);
+  using ValueSize=std::int32_t (*)(Handle,std::uint32_t *);
+  using Offset=std::size_t (*)(Handle);
+  Param param{};
+  Unary result{}, klass{};
+  Flag instance{}, byref{}, enumeration{};
+  Kind kind{};
+  Name name{};
+  Unary fieldType{};
+  ValueSize valueSize{};
+  Offset fieldOffset{};
+  Metadata() {
+    void *lib=dlopen("libil2cpp.so", RTLD_NOW | RTLD_NOLOAD);
+    if (!lib) return;
+#define META(slot, symbol) slot=reinterpret_cast<decltype(slot)>(dlsym(lib, symbol))
+    META(param,"il2cpp_method_get_param");
+    META(result,"il2cpp_method_get_return_type");
+    META(klass,"il2cpp_class_from_type");
+    META(instance,"il2cpp_method_is_instance");
+    META(byref,"il2cpp_type_is_byref");
+    META(enumeration,"il2cpp_class_is_enum");
+    META(kind,"il2cpp_type_get_type");
+    META(name,"il2cpp_class_get_name");
+    META(fieldType,"il2cpp_field_get_type");
+    META(valueSize,"il2cpp_class_value_size");
+    META(fieldOffset,"il2cpp_field_get_offset");
+#undef META
+    dlclose(lib);
+  }
+  bool ready() const {
+    return param && result && klass && instance && byref && enumeration && kind && name;
+  }
+  patch_type_t category(Handle type) const {
+    if (!type) return PATCH_VOID;
+    if (byref(type)) return PATCH_POINTER;
+    switch(kind(type)) {
+      case 1: return PATCH_VOID;
+      case 2: return PATCH_BOOL;
+      case 3: return PATCH_CHAR;
+      case 4: return PATCH_INT8;
+      case 5: return PATCH_UINT8;
+      case 6: return PATCH_INT16;
+      case 7: return PATCH_UINT16;
+      case 8: return PATCH_INT32;
+      case 9: return PATCH_UINT32;
+      case 10: return PATCH_INT64;
+      case 11: return PATCH_UINT64;
+      case 12: return PATCH_FLOAT;
+      case 13: return PATCH_DOUBLE;
+      case 15: return PATCH_POINTER;
+      case 17: {
+        auto typeName=name(klass(type));
+        if(typeName && (std::strcmp(typeName,"IntPtr")==0 || std::strcmp(typeName,"UIntPtr")==0))
+          return PATCH_POINTER;
+        return enumeration(klass(type)) ? PATCH_INT32 : PATCH_STRUCT;
+      }
+      case 18: return PATCH_OBJECT;
+      case 24: case 25: return PATCH_POINTER; // IL2CPP_TYPE_I / IL2CPP_TYPE_U.
+      default: return PATCH_OBJECT;
+    }
+  }
+  const char *typeName(Handle type) const {
+    auto c=type ? klass(type) : nullptr;
+    return c ? name(c) : nullptr;
+  }
+};
+}
+static const char *argumentName(const char *method, std::size_t i, std::size_t count) {
   const char *style[] = {"Single", "Item", "Rectangle"};
   const char *hitbox[] = {"Item", "Rectangle", "Boolean", "Rectangle"};
   const char *hit[] = {"Item", "Rectangle", "Int32", "Single", "Int32"};
   const char *draw[] = {"Texture2D", "Vector2", "Color",         "Single",
                         "Vector2",   "Vector2", "SpriteEffects", "Int32"};
+  const char *drawRect[] = {"Texture2D", "Vector2", "Rectangle", "Color", "Single", "Vector2", "Vector2", "SpriteEffects", "Int32"};
   const char *arm[] = {"Boolean", "CompositeArmStretchAmount", "Single"};
   const char *hand[] = {"CompositeArmStretchAmount", "Single"};
   if (std::strcmp(method, "ItemCheck_ApplyUseStyle") == 0)
@@ -17,18 +95,30 @@ static const char *argumentName(const char *method, std::size_t i) {
   if (std::strcmp(method, "ProcessHitAgainstNPC") == 0)
     return hit[i];
   if (std::strcmp(method, "Set") == 0)
-    return draw[i];
-  if (std::strcmp(method, "SetCompositeArmFront") == 0)
+    return count==9 ? drawRect[i] : draw[i];
+  if (std::strcmp(method, "SetCompositeArmFront") == 0 || std::strcmp(method,"SetCompositeArmBack")==0)
     return arm[i];
   if (std::strcmp(method, "GetFrontHandPosition") == 0)
     return hand[i];
   if (std::strcmp(method, "DrawPlayer_27_HeldItem") == 0)
     return "PlayerDrawSet";
+  if(std::strcmp(method,"DrawPlayer_08_Backpacks")==0)return "PlayerDrawSet";
+  if(std::strcmp(method,"GetWeaponDamage")==0)return "Item";
+  if(std::strcmp(method,"GetWeaponKnockback")==0)return i==0?"Item":"Single";
+  if(std::strcmp(method,"ApplyDamageToNPC")==0){
+    const char *args[]={"NPC","Int32","Single","Int32","Boolean","PlayerNPCHitSource"};return args[i];
+  }
+  if(std::strcmp(method,"FromItem")==0)return "Int32";
+  if(std::strcmp(method,"GetFrame")==0)return i==0?"Texture2D":"Int32";
   if (std::strcmp(method, "Update") == 0 ||
       std::strcmp(method, "ResetNPCSlotData") == 0)
     return "Int32";
   if (std::strcmp(method, "DoUpdate") == 0)
     return "GameTime";
+  if(std::strcmp(method,".ctor")==0 && count==1) return "Texture2D";
+  if(std::strcmp(method,"SolidCollision")==0) {
+    const char *args[]={"Vector2","Int32","Int32","Boolean"};return args[i];
+  }
   return nullptr;
 }
 BoundMethod RuntimeApi::method(const char *ns, const char *type,
@@ -49,36 +139,38 @@ BoundMethod RuntimeApi::method(const char *ns, const char *type,
     if (!n || std::strcmp(n, name) != 0 ||
         patchlib_method_get_param_count(m) != static_cast<int>(wanted.size()))
       continue;
-    // The full structure fits the old prefix too. An old runtime leaves
-    // arg_type_handles empty and is rejected.
-    patch_method_signature_t s{};
-    if (!patchlib_method_get_signature(m, &s))
-      continue;
-    bool ok = s.is_instance == instance && s.return_type == ret &&
-              s.arg_types.size == wanted.size() &&
-              s.arg_type_handles.size == wanted.size();
+    Metadata raw;
+    if (!raw.ready()) {
+      log("Method binding failed: required libil2cpp metadata exports unavailable.");
+      break;
+    }
+    bool ok = raw.result(m) && raw.instance(m) == instance && raw.category(raw.result(m)) == ret;
     std::size_t k = 0;
     for (auto t : wanted) {
-      if (ok) {
-        auto actual =
-            static_cast<patch_type_t *>(tefstd_vector_at(&s.arg_types, k));
-        ok = actual && *actual == t;
-        auto expected = argumentName(name, k);
-        auto h =
-            static_cast<Handle *>(tefstd_vector_at(&s.arg_type_handles, k));
-        auto actualName = h ? patchlib_type_get_name(*h) : nullptr;
-        if (expected)
-          ok = ok && actualName && std::strcmp(expected, actualName) == 0;
+      auto parameter=raw.param(m, static_cast<unsigned>(k));
+      auto actualName=raw.typeName(parameter);
+      auto expected=argumentName(name,k,wanted.size());
+      bool matches=parameter && raw.category(parameter)==t &&
+          (!expected || (actualName && std::strcmp(expected,actualName)==0));
+      if (!matches) {
+        char message[256];
+        std::snprintf(message,sizeof(message),"%s.%s parameter %zu mismatch: type=%s category=%d expected=%d",
+          type,name,k,actualName ? actualName : "null",int(raw.category(parameter)),int(t));
+        log(message);
       }
+      ok=ok && matches;
       ++k;
     }
     if (ok && choice) {
-      // DrawData.Set overloads differ at parameter 5 (float versus Vector2).
-      auto h = static_cast<Handle *>(tefstd_vector_at(&s.arg_type_handles, 5));
-      const char *n2 = h ? patchlib_type_get_name(*h) : nullptr;
-      ok = n2 && std::strcmp(n2, choice) == 0;
+      auto n2=raw.typeName(raw.param(m,5));
+      ok=n2 && std::strcmp(n2,choice)==0;
     }
-    patchlib_method_signature_free(&s);
+    if (!ok) {
+      char message[256];
+      std::snprintf(message,sizeof(message),"%s.%s rejected: instance=%d expected=%d return=%d expected=%d",
+          type,name,raw.instance(m),instance,int(raw.category(raw.result(m))),int(ret));
+      log(message);
+    }
     if (ok) {
       if (found.metadata) {
         found = {};
@@ -88,12 +180,45 @@ BoundMethod RuntimeApi::method(const char *ns, const char *type,
     }
   }
   tefstd_vector_destroy(&methods);
+  if (!found.metadata || !found.pointer) {
+    char message[192];
+    std::snprintf(message,sizeof(message),"Method unavailable or ambiguous: %s.%s (%zu parameters)",type,name,wanted.size());
+    log(message);
+  }
   return found;
 }
 bool RuntimeApi::field(Field slot, const char *ns, const char *type,
                        const char *name, std::size_t size) {
+  auto index=static_cast<std::size_t>(slot);
+  fields_[index]=nullptr;inlineFields_[index]={};
   auto c = patchlib_type_get_type(ns, type);
   auto f = c ? patchlib_type_get_field(c, name) : nullptr;
+  // The supplied Android kernel's VALUETYPE size branch falls through to
+  // sizeof(void*). Its get/set helpers also use that truncated size. Resolve
+  // these reference-free inline structs from IL2CPP metadata and copy their
+  // verified full payload; changing the expected size to 8 would lose rotation.
+  if(f && (slot==Field::FrontArm || slot==Field::BackArm)) {
+    Metadata raw;
+    if(raw.ready() && raw.fieldType && raw.valueSize && raw.fieldOffset) {
+      auto fieldType=raw.fieldType(f);
+      auto klass=fieldType?raw.klass(fieldType):nullptr;
+      auto actualName=klass?raw.name(klass):nullptr;
+      auto actualSize=klass?raw.valueSize(klass,nullptr):0;
+      auto offset=raw.fieldOffset(f);
+      if(fieldType && raw.kind(fieldType)==17 && actualName &&
+         std::strcmp(actualName,"CompositeArmData")==0 &&
+         actualSize>0 && static_cast<std::size_t>(actualSize)==size &&
+         offset>0 && offset<1024*1024) {
+        fields_[index]=f;inlineFields_[index]={offset,size};
+        return true;
+      }
+      char message[192];
+      std::snprintf(message,sizeof(message),"Inline field %s layout rejected: actual=%d expected=%zu",name,actualSize,size);
+      log(message);
+    }
+    error_=name;
+    return false;
+  }
   if (!f || patchlib_field_get_size(f) != size) {
     error_ = name;
     return false;
@@ -104,7 +229,6 @@ bool RuntimeApi::field(Field slot, const char *ns, const char *type,
 ResolveReport RuntimeApi::resolve() {
   if (!patchlib_type_get_type || !patchlib_type_get_methods ||
       !patchlib_method_get_name || !patchlib_method_get_param_count ||
-      !patchlib_method_get_signature || !patchlib_method_signature_free ||
       !patchlib_method_get_pointer || !patchlib_type_get_field ||
       !patchlib_field_get_size || !patchlib_field_get_value ||
       !patchlib_field_set_value || !patchlib_type_get_name ||
@@ -129,6 +253,13 @@ ResolveReport RuntimeApi::resolve() {
   heldDraw =
       method("Terraria.DataStructures", "PlayerDrawLayers",
              "DrawPlayer_27_HeldItem", false, PATCH_VOID, {PATCH_OBJECT});
+  backDraw=method("Terraria.DataStructures","PlayerDrawLayers","DrawPlayer_08_Backpacks",false,PATCH_VOID,{PATCH_OBJECT});
+  weaponDamage=method("Terraria","Player","GetWeaponDamage",true,PATCH_INT32,{PATCH_OBJECT});
+  weaponKnockback=method("Terraria","Player","GetWeaponKnockback",true,PATCH_FLOAT,{PATCH_OBJECT,PATCH_FLOAT});
+  applyDamage=method("Terraria","Player","ApplyDamageToNPC",true,PATCH_VOID,
+       {PATCH_OBJECT,PATCH_INT32,PATCH_FLOAT,PATCH_INT32,PATCH_BOOL,PATCH_STRUCT});
+  hitSource=method("Terraria.GameContent","PlayerNPCHitSource","FromItem",false,PATCH_STRUCT,{PATCH_INT32});
+  wavesReady=weaponDamage.pointer && weaponKnockback.pointer && applyDamage.pointer && hitSource.pointer;
   heldItem =
       method("Terraria", "Player", "get_HeldItem", true, PATCH_OBJECT, {});
   tick = method("Terraria", "Main", "get_GameUpdateCount", false, PATCH_UINT32,
@@ -138,6 +269,11 @@ ResolveReport RuntimeApi::resolve() {
       method("Terraria", "Main", "get_screenPosition", false, PATCH_STRUCT, {});
   arm = method("Terraria", "Player", "SetCompositeArmFront", true, PATCH_VOID,
                {PATCH_BOOL, PATCH_INT32, PATCH_FLOAT});
+  backArm = method("Terraria", "Player", "SetCompositeArmBack", true, PATCH_VOID,
+               {PATCH_BOOL, PATCH_INT32, PATCH_FLOAT});
+  mountActive=method("Terraria","Mount","get_Active",true,PATCH_BOOL,{});
+  solidCollision=method("Terraria","Collision","SolidCollision",false,PATCH_BOOL,
+                        {PATCH_STRUCT,PATCH_INT32,PATCH_INT32,PATCH_BOOL});
   hand = method("Terraria", "Player", "GetFrontHandPosition", true,
                 PATCH_STRUCT, {PATCH_INT32, PATCH_FLOAT});
   addDraw = method("Terraria.DataStructures", "PlayerDrawSet", "AddDrawData",
@@ -147,9 +283,12 @@ ResolveReport RuntimeApi::resolve() {
              {PATCH_OBJECT, PATCH_STRUCT, PATCH_STRUCT, PATCH_FLOAT,
               PATCH_STRUCT, PATCH_STRUCT, PATCH_INT32, PATCH_INT32},
              "Vector2");
+  setDrawRect = method("Terraria.DataStructures", "DrawData", "Set", true, PATCH_VOID,
+      {PATCH_OBJECT,PATCH_STRUCT,PATCH_STRUCT,PATCH_STRUCT,PATCH_FLOAT,
+       PATCH_STRUCT,PATCH_STRUCT,PATCH_INT32,PATCH_INT32});
   BoundMethod all[] = {update,   style,   hitbox,  hitNpc,     heldDraw,
                        heldItem, tick,    menu,    screen,     arm,
-                       hand,     addDraw, setDraw, mainUpdate, resetNpc};
+                       hand,     addDraw, setDraw, mainUpdate, resetNpc, setDrawRect, backArm, mountActive, solidCollision};
   const char *names[] = {"Player.Update",        "ApplyUseStyle",
                          "GetMeleeHitbox",       "ProcessHitAgainstNPC",
                          "HeldItem draw",        "HeldItem getter",
@@ -157,16 +296,32 @@ ResolveReport RuntimeApi::resolve() {
                          "screenPosition",       "SetCompositeArmFront",
                          "GetFrontHandPosition", "AddDrawData",
                          "DrawData.Set",         "Main.DoUpdate",
-                         "ResetNPCSlotData"};
+                         "ResetNPCSlotData", "DrawData.Set source rectangle", "SetCompositeArmBack", "Mount.Active", "Collision.SolidCollision"};
   for (std::size_t i = 0; i < sizeof(all) / sizeof(*all); ++i)
     if (!all[i].metadata || !all[i].pointer)
       return {false, FailureCode::SignatureMismatch, names[i]};
+  if(!backDraw.pointer)return {false,FailureCode::SignatureMismatch,"Backpack draw layer"};
   bool ok = true;
   auto f = [&](Field s, const char *ns, const char *type, const char *n,
                std::size_t size) {
     if (ok)
       ok = field(s, ns, type, n, size);
   };
+  f(Field::ControlUseItem,"Terraria","Player","controlUseItem",1);
+  f(Field::BodyRotation,"Terraria","Player","bodyRotation",4);
+  f(Field::BodyPosition,"Terraria","Player","bodyPosition",8);
+  f(Field::LegRotation,"Terraria","Player","legRotation",4);
+  f(Field::LegPosition,"Terraria","Player","legPosition",8);
+  f(Field::FrontArm,"Terraria","Player","compositeFrontArm",12);
+  f(Field::BackArm,"Terraria","Player","compositeBackArm",12);
+  f(Field::Velocity,"Terraria","Entity","velocity",8);
+  f(Field::Mount,"Terraria","Player","mount",sizeof(Handle));
+  f(Field::Pulley,"Terraria","Player","pulley",1);
+  f(Field::GrapCount,"Terraria","Player","grapCount",4);
+  f(Field::Frozen,"Terraria","Player","frozen",1);
+  f(Field::Stoned,"Terraria","Player","stoned",1);
+  f(Field::TextureWidth,"Microsoft.Xna.Framework.Graphics","Texture2D","Width",4);
+  f(Field::TextureHeight,"Microsoft.Xna.Framework.Graphics","Texture2D","Height",4);
   f(Field::PlayerId, "Terraria", "Entity", "whoAmI", 4);
   f(Field::Position, "Terraria", "Entity", "position", 8);
   f(Field::Width, "Terraria", "Entity", "width", 4);
@@ -186,6 +341,10 @@ ResolveReport RuntimeApi::resolve() {
   f(Field::Npcs, "Terraria", "Main", "npc", sizeof(void *));
   f(Field::NpcLife, "Terraria", "NPC", "life", 4);
   f(Field::NpcActive, "Terraria", "NPC", "active", 1);
+  f(Field::NpcFriendly,"Terraria","NPC","friendly",1);
+  f(Field::NpcImmortal,"Terraria","NPC","immortal",1);
+  f(Field::NpcInvulnerable,"Terraria","NPC","dontTakeDamage",1);
+  f(Field::ItemKnockback,"Terraria","Item","knockBack",4);
   f(Field::DrawPlayer, "Terraria.DataStructures", "PlayerDrawSet", "drawPlayer",
     sizeof(void *));
   f(Field::Shadow, "Terraria.DataStructures", "PlayerDrawSet", "shadow", 4);
@@ -204,6 +363,30 @@ ResolveReport RuntimeApi::resolve() {
     "hideEntirePlayerExceptHelmetsAndFaceAccessories", 1);
   if (!ok)
     return {false, FailureCode::MissingField, error_};
+  if(!wavesReady)log("Sword wave disabled: damage bindings unavailable; melee remains active.");
+  carryReady=true;
+  auto cf=[&](Field slot,const char *ns,const char *type,const char *name,std::size_t size){
+    if(!field(slot,ns,type,name,size))carryReady=false;
+  };
+  cf(Field::ItemDamage,"Terraria","Item","damage",4);
+  cf(Field::ItemPick,"Terraria","Item","pick",4);
+  cf(Field::ItemAxe,"Terraria","Item","axe",4);
+  cf(Field::ItemHammer,"Terraria","Item","hammer",4);
+  cf(Field::ItemUseStyle,"Terraria","Item","useStyle",1);
+  cf(Field::ItemUseAmmo,"Terraria","Item","useAmmo",4);
+  cf(Field::ItemMelee,"Terraria","Item","melee",1);
+  cf(Field::ItemRanged,"Terraria","Item","ranged",1);
+  cf(Field::ItemMagic,"Terraria","Item","magic",1);
+  cf(Field::ItemSummon,"Terraria","Item","summon",1);
+  cf(Field::ItemConsumable,"Terraria","Item","consumable",1);
+  cf(Field::ItemAccessory,"Terraria","Item","accessory",1);
+  cf(Field::ItemNoUseGraphic,"Terraria","Item","noUseGraphic",1);
+  cf(Field::ItemChannel,"Terraria","Item","channel",1);
+  cf(Field::ItemStaffSet,"Terraria","Item","staff",sizeof(Handle));
+  cf(Field::AmmoArrow,"Terraria.ID","AmmoID","Arrow",4);
+  cf(Field::AmmoBullet,"Terraria.ID","AmmoID","Bullet",4);
+  cf(Field::ItemAnimations,"Terraria","Main","itemAnimations",sizeof(Handle));
+  if(!carryReady)log("Generic carry disabled: item metadata unavailable; wooden sword remains active.");
   // This Android Asset<T> exposes Value as a field. Its declared, closed
   // generic class comes from metadata, without assuming generic field offsets.
   Handle assetClass{};

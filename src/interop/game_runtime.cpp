@@ -20,7 +20,7 @@ bool GameRuntime::start() {
     return false;
   }
   ready_.store(true);
-  log("MeleeReforged 0.1.0 active: single-player wooden sword only.");
+  log("MeleeReforged 0.5.0 active: single-player weapon/tool carry and wooden sword; A three moves, C charge/release + manual followups; waist carry, heavy damage multipliers, gold sword wave, independent arms and textured slash.");
   return true;
 }
 void GameRuntime::stop() {

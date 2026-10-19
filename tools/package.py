@@ -21,7 +21,8 @@ def package(build_dir, output):
         for name in ("Manifest.json", "Info.json", "mod.json", "LICENSE"):
             archive.write(ROOT / name, name)
         archive.writestr("Resources/", b"")
-        archive.writestr("lib/" + library.name, data)
+        archive.writestr("Resources/lib/" + library.name, data)
+        archive.write(ROOT / "assets/slash-study/sources.json", "LICENSES/slash-sources.json")
         archive.write(ROOT / "vendor/dobby/LICENSE", "LICENSES/Dobby-Apache-2.0.txt")
         for name in ("tefkernel/tef_api.h", "kernelloader/mod_core.h"):
             archive.write(ROOT / "vendor" / name, "LICENSES/" + Path(name).name + ".txt")

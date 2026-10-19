@@ -17,6 +17,7 @@ Style originalStyle{};
 Hitbox originalHitbox{};
 Hit originalHit{};
 Draw originalDraw{};
+Draw originalBackDraw{};
 MainUpdate originalMain{};
 ResetNpc originalReset{};
 HookSet hooks(DobbyHook, DobbyDestroy);
@@ -30,6 +31,7 @@ void resetHook(int id, Handle metadata) {
   runtime().resetNpc(id);
 }
 void updateHook(Handle p, int i, Handle metadata) {
+  runtime().restorePose(p);
   originalUpdate(p, i, metadata);
   runtime().update(p);
 }
@@ -55,6 +57,10 @@ void drawHook(Handle info, Handle metadata) {
   if (!runtime().draw(info))
     originalDraw(info, metadata);
 }
+void backDrawHook(Handle info,Handle metadata){
+  originalBackDraw(info,metadata);
+  runtime().drawBack(info);
+}
 } // namespace
 bool installNativeHooks(RuntimeApi &a) {
   if (hooks.count())
@@ -77,6 +83,8 @@ bool installNativeHooks(RuntimeApi &a) {
        reinterpret_cast<void **>(&originalHit)},
       {a.heldDraw.pointer, reinterpret_cast<void *>(drawHook),
        reinterpret_cast<void **>(&originalDraw)},
+      {a.backDraw.pointer,reinterpret_cast<void *>(backDrawHook),
+       reinterpret_cast<void **>(&originalBackDraw)},
       {a.mainUpdate.pointer, reinterpret_cast<void *>(mainHook),
        reinterpret_cast<void **>(&originalMain)},
       {a.resetNpc.pointer, reinterpret_cast<void *>(resetHook),
