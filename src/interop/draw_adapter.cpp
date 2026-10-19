@@ -4,6 +4,7 @@
 #include "render/slash_sheet.hpp"
 #include "weapons/weapon_registry.hpp"
 #include "effect_atlas.hpp"
+#include "katana_vfx.hpp"
 namespace mr {
 static Handle assetTexture(RuntimeApi &a, Handle asset) {
   return a.assetTexture(asset);
@@ -33,14 +34,15 @@ bool GameRuntime::draw(Handle ctx) {
     return false;
   auto item = invoke<Handle>(api_.heldItem, p);
   if(!item)return false;
-  if(api_.read<int>(Field::ItemType,item)!=24)
+  auto itemId=api_.read<int>(Field::ItemType,item);
+  if(!findWeapon(itemId))
     return drawGenericCarry(ctx,p,*s,false);
-  if(!s->seen || !resourcesReady())
+  if(!s->seen || s->combatItemId!=itemId || !resourcesReady())
     return false;
   auto items = api_.read<Handle>(Field::ItemTextures);
   Handle swordAsset{};
-  if (!items || patchlib_array_length(items) <= 24 ||
-      !patchlib_array_at(items, 24, &swordAsset))
+  if (!items || patchlib_array_length(items) <= static_cast<std::size_t>(itemId) ||
+      !patchlib_array_at(items, itemId, &swordAsset))
     return false;
   auto sword = assetTexture(api_, swordAsset),
        pixel = assetTexture(api_, api_.read<Handle>(Field::MagicPixel));
@@ -56,11 +58,11 @@ bool GameRuntime::draw(Handle ctx) {
     return true;
   }
   auto &pose = s->current;
-  auto atlas=effectAtlas(api_);
-  const auto &weapon=*findWeapon(24);
+  auto atlas=effectAtlas(api_,itemId==2273);
+  const auto &weapon=*findWeapon(itemId);
   auto fx=slashForAttack(pose,pose.charged?weapon.heavy[pose.combo]:weapon.swings[pose.combo]);
   auto drawSheet=[&](bool halo) {
-    if(!atlas || !fx.visible || (!pose.charged && pose.combo==2)) return;
+    if(itemId==2273 || !atlas || !fx.visible || (!pose.charged && pose.combo==2)) return;
     auto slot=invoke<Handle>(api_.addDraw,ctx);
     if(!slot) return;
     float rotation=std::atan2(std::sin(fx.rotation)*pose.gravity,
@@ -75,7 +77,7 @@ bool GameRuntime::draw(Handle ctx) {
       NativeRect{fx.frame*160,halo?160:0,160,160},toNativeColor(tint),
       rotation,Vec2{80,80},Vec2{scale,scale},effects,0);
   };
-  auto commands = SwingRenderer::build(pose, s->trail, Quality::Medium);
+  auto commands = itemId==2273 ? DrawCommands{} : SwingRenderer::build(pose, s->trail, Quality::Medium);
   auto drawEffects = [&](bool front) {
     for (std::size_t i = 0; i < commands.count; ++i) {
       auto &d = commands.data[i];
@@ -86,6 +88,7 @@ bool GameRuntime::draw(Handle ctx) {
               {0, .5f}, {length(v), d.width}, true);
     }
   };
+  if(itemId==2273) drawKatanaEffects(api_,ctx,atlas,*s,screen);
   drawSheet(true);
   drawSheet(false);
   drawEffects(false);
@@ -93,6 +96,18 @@ bool GameRuntime::draw(Handle ctx) {
   const float height=float(api_.read<int>(Field::TextureHeight,sword));
   if(width<5 || height<5 || width>4096 || height>4096) return false;
   const Vec2 bladeAxis{width-4,4-height};
+  if(itemId==2273 && pose.damaging){
+    int echoes=0;
+    for(std::size_t i=0;i<s->trail.size() && echoes<2;++i){
+      const auto &old=s->trail[i].pose;
+      if(old.attackId!=pose.attackId || !old.damaging || pose.tick<=old.tick || pose.tick-old.tick>4)continue;
+      float oldAngle=std::atan2(old.tip.y-old.grip.y,old.tip.x-old.grip.x)-std::atan2(bladeAxis.y,bladeAxis.x);
+      float ghostScale=old.bladeLength/length(bladeAxis);
+      enqueueDraw(api_,ctx,sword,old.grip-screen,{150,205,255,static_cast<unsigned char>(45-echoes*15)},oldAngle,{2,height-2},{ghostScale,ghostScale});
+      ++echoes;
+    }
+  }
+
   float angle=std::atan2(pose.tip.y-pose.grip.y,pose.tip.x-pose.grip.x)-
               std::atan2(bladeAxis.y,bladeAxis.x);
   float scale=length(pose.tip-pose.grip)/length(bladeAxis);
@@ -106,6 +121,7 @@ bool GameRuntime::draw(Handle ctx) {
     if (!hit.active || now < hit.tick || now - hit.tick > 12)
       continue;
     float age = float(now - hit.tick) / 60.f, fade = 1.f - age / .2f;
+    if(itemId==2273)continue;
     for (int i = 0; i < 6; ++i) {
       float a = float(i) * 1.04719755f + float(hit.tick % 10) * .1f;
       Vec2 v{std::cos(a), std::sin(a)};
@@ -115,6 +131,6 @@ bool GameRuntime::draw(Handle ctx) {
               {0, .5f}, {4.f * fade, 2.f * fade}, true);
     }
   }
-  return true; // Suppress only this wooden sword's original held-item layer.
+  return true; // Suppress only this registered weapon's original held-item layer.
 }
 } // namespace mr

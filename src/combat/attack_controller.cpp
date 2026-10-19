@@ -64,7 +64,7 @@ AttackPose AttackController::advance(const AttackInput &in) {
   }
   // Gameplay adapters should feed fixed simulation ticks. Carry at most three
   // cycles; no unbounded catch-up.
-  float cycle = in.cycleSeconds * (charged_ ? 1.5f : 1.f);
+  float cycle = in.cycleSeconds * (charged_ ? w->heavyTiming : w->normalTiming[pose_.combo]);
   for (int n = 0; elapsed_ + 1e-6f >= cycle && n < 3; ++n) {
     elapsed_ -= cycle;
     nextCombo_ = (pose_.combo + 1) % 3;
@@ -74,17 +74,19 @@ AttackPose AttackController::advance(const AttackInput &in) {
       pose_.combo=0;
       pose_.attackId=++serial_;
       elapsed_=0;
-      cycle=in.cycleSeconds*1.5f;
+      cycle=in.cycleSeconds*w->heavyTiming;
       lockedDirection_=in.direction<0?-1:1;
       lockedGravity_=in.gravity<0?-1.f:1.f;
       break;
     }
     idle_ = 0;
-    if (!in.attacking || (charged_ && nextCombo_==0)) {
+    if (!in.attacking || (charged_ && (nextCombo_==0 || nextCombo_>=w->heavyStages))) {
+      if(charged_ && nextCombo_>=w->heavyStages)nextCombo_=0;
       pose_ = {};
       return pose_;
     }
     pose_.combo = nextCombo_;
+    cycle=in.cycleSeconds*(charged_?w->heavyTiming:w->normalTiming[pose_.combo]);
     pose_.attackId = ++serial_;
     lockedDirection_ = in.direction < 0 ? -1 : 1;
     lockedGravity_ = in.gravity < 0 ? -1.f : 1.f;

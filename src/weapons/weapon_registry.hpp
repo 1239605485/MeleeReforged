@@ -3,4 +3,5 @@
 namespace mr {
 const WeaponProfile *findWeapon(int itemId);
 const WeaponProfile &woodenSword();
+const WeaponProfile &katana();
 } // namespace mr

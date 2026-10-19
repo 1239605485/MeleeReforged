@@ -10,8 +10,10 @@ Key blend(Key a,Key b,float t) {
          mix(a.drop,b.drop,t),mix(a.shift,b.shift,t),mix(a.back,b.back,t)};
 }
 }
+AttackPose evaluateKatanaPose(const WeaponProfile &,int,float,Vec2,int,float,float,bool);
 AttackPose evaluatePose(const WeaponProfile &weapon,int combo,float u,Vec2 grip,
                         int direction,float gravity,float bladeLength,bool charged) {
+  if(weapon.itemId==2273)return evaluateKatanaPose(weapon,combo,u,grip,direction,gravity,bladeLength,charged);
   AttackPose p{};
   p.active=true;p.combo=std::clamp(combo,0,2);p.progress=std::clamp(u,0.f,1.f);
   p.direction=direction<0?-1:1;p.gravity=gravity<0?-1.f:1.f;

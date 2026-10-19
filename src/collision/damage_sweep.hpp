@@ -13,7 +13,8 @@ inline DamageSweep collectDamageSweep(const AttackPose &previous,
   DamageSweep out;
   if (!current.active || current.charging)
     return out;
-  const auto *weapon = findWeapon(24);
+  const auto *weapon = findWeapon(current.itemId);
+  if(!weapon)return out;
   AttackPose chosen = current;
   float start = previous.active && !previous.charging && previous.attackId == current.attackId
                     ? previous.progress

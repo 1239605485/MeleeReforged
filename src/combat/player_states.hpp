@@ -36,6 +36,7 @@ struct PlayerState {
   std::uint64_t steppedAttack{};
   std::uintptr_t identity{}, world{};
   bool seen{};
+  int combatItemId{};
   std::array<Impact, 8> impacts{};
   std::size_t nextImpact{};
   std::uintptr_t pendingNpc{};

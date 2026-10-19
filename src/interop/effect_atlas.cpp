@@ -1,13 +1,16 @@
 #include "effect_atlas.hpp"
 #include "generated/slash_atlas.hpp"
+#include "generated/katana_atlas.hpp"
 #include <cstring>
 #include <dlfcn.h>
 namespace mr {
 void log(const char *);
-Handle effectAtlas(RuntimeApi &api) {
-  static bool attempted=false;
-  static Handle atlas{};
-  static unsigned root{};
+Handle effectAtlas(RuntimeApi &api,bool katana) {
+  static bool attempts[2]{};static Handle atlases[2]{};static unsigned roots[2]{};
+  auto &attempted=attempts[katana];auto &atlas=atlases[katana];auto &root=roots[katana];
+  int width=katana?katanaAtlasWidth:slashAtlasWidth,height=katana?katanaAtlasHeight:slashAtlasHeight;
+  auto bytes=katana?sizeof(katanaAtlasPixels):sizeof(slashAtlasPixels);
+  const auto *data=katana?katanaAtlasPixels:slashAtlasPixels;
   if(attempted) return atlas;
   attempted=true;
   auto ctor=api.method("UnityEngine","Texture2D",".ctor",true,PATCH_VOID,
@@ -33,14 +36,14 @@ Handle effectAtlas(RuntimeApi &api) {
   if(!unity) return nullptr;
   unsigned unityRoot=retain(unity,false);
   if(!unityRoot) return nullptr;
-  invoke<void>(ctor,unity,slashAtlasWidth,slashAtlasHeight,4,false);
+  invoke<void>(ctor,unity,width,height,4,false);
   invoke<void>(filter,unity,1); // Bilinear; texture contains a soft halo row.
   invoke<void>(wrap,unity,1);   // Clamp.
   auto pixels=invoke<void *>(raw,unity,0);
-  if(!pixels || invoke<std::uint64_t>(size,unity)!=sizeof(slashAtlasPixels)) {
+  if(!pixels || invoke<std::uint64_t>(size,unity)!=bytes) {
     release(unityRoot);log("Slash atlas raw size mismatch; geometry fallback active.");return nullptr;
   }
-  std::memcpy(pixels,slashAtlasPixels,sizeof(slashAtlasPixels));
+  std::memcpy(pixels,data,bytes);
   invoke<void>(apply,unity);
   auto xna=make(patchlib_type_get_type("Microsoft.Xna.Framework.Graphics","Texture2D"));
   if(!xna) {release(unityRoot);return nullptr;}
@@ -49,7 +52,7 @@ Handle effectAtlas(RuntimeApi &api) {
   invoke<void>(xnaCtor,xna,unity);
   release(unityRoot); // XNA owns the Unity texture reference from here.
   atlas=xna;
-  log("Slash atlas ready: six textured frames, core/halo, GC retained.");
+  log(katana?"Katana atlas ready: four compact shapes, GC retained.":"Slash atlas ready: six textured frames, core/halo, GC retained.");
   return atlas;
 }
 }

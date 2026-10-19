@@ -1,0 +1,86 @@
+[
+  {
+    "id": "A02_014",
+    "source_pack": "slash-effect-collection",
+    "source_url": "https://opengameart.org/content/slash-effect-collection",
+    "author": "MetaShinryu",
+    "license": "CC0-1.0",
+    "original_file": "textures/slash-effect-collection/extracted/Slash Effect Collection/Small/small_0010.png",
+    "sourceRect": [
+      1453,
+      572,
+      127,
+      123
+    ],
+    "originalSize": [
+      127,
+      123
+    ],
+    "trimmed": false,
+    "rotated": false,
+    "sha256": "962b0eef0afe19c29d6f7cd916c78eb9da8bdc4bb99332e69eab4833eca1de79"
+  },
+  {
+    "id": "A02_040",
+    "source_pack": "slash-effect-collection",
+    "source_url": "https://opengameart.org/content/slash-effect-collection",
+    "author": "MetaShinryu",
+    "license": "CC0-1.0",
+    "original_file": "textures/slash-effect-collection/extracted/Slash Effect Collection/Small/small_0036.png",
+    "sourceRect": [
+      217,
+      998,
+      140,
+      8
+    ],
+    "originalSize": [
+      140,
+      8
+    ],
+    "trimmed": false,
+    "rotated": false,
+    "sha256": "6889b68eba018b5ebe5a7884e594df761c31a13708f979d5949f2ce1610063ed"
+  },
+  {
+    "id": "A06_010",
+    "source_pack": "light-magic-effect",
+    "source_url": "https://opengameart.org/content/light-magic-effect",
+    "author": "Cethiel",
+    "license": "CC0-1.0",
+    "original_file": "textures/light-magic-effect/extracted/LightEffect_11.png",
+    "sourceRect": [
+      618,
+      156,
+      150,
+      150
+    ],
+    "originalSize": [
+      150,
+      150
+    ],
+    "trimmed": false,
+    "rotated": false,
+    "sha256": "4c2c2e08487bf0c9aa415820b70b10b9809424705db3a3bf1099d2600ff523e2"
+  },
+  {
+    "id": "A15_008",
+    "source_pack": "2d-spell-effects",
+    "source_url": "https://opengameart.org/content/2d-spell-effects",
+    "author": "Mikodrak",
+    "license": "CC0-1.0",
+    "original_file": "textures/2d-spell-effects/extracted/fx7_energyBall/aura_test_1_32_9.png",
+    "sourceRect": [
+      170,
+      73,
+      80,
+      67
+    ],
+    "originalSize": [
+      80,
+      67
+    ],
+    "trimmed": false,
+    "rotated": false,
+    "sha256": "0106154168699c79acbc560c690f957ce947d3b9477b2c7777e14238109448e2"
+  }
+]

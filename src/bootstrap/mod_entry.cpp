@@ -25,7 +25,7 @@ void init(kernel_mod_handle_t *h) {
   mr::runtime().start();
 }
 void cleanup(kernel_mod_handle_t *) { mr::runtime().stop(); }
-kernel_mod_info_t info{"liuxin.melee.reforged", 8, 1, "0.5.0"};
+kernel_mod_info_t info{"liuxin.melee.reforged", 9, 1, "0.6.0"};
 kernel_mod_info_t *getInfo() { return &info; }
 kernel_mod_ops_t ops{init, cleanup, getInfo};
 } // namespace

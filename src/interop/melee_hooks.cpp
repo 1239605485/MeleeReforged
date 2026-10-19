@@ -2,6 +2,7 @@
 #include "combat/trajectory.hpp"
 #include "game_runtime.hpp"
 #include "weapons/wooden_sword_rules.hpp"
+#include "weapons/weapon_registry.hpp"
 #include <algorithm>
 namespace mr {
 static Rect rectOf(RuntimeApi &a, Handle npc) {
@@ -16,7 +17,7 @@ bool GameRuntime::hitbox(Handle p, void **args) {
   if (!s || !s->current.active || !args || !args[0])
     return false;
   auto item = *static_cast<Handle *>(args[0]);
-  if (!item || api_.read<int>(Field::ItemType, item) != 24)
+  if (!item || !findWeapon(api_.read<int>(Field::ItemType,item)) || s->combatItemId!=api_.read<int>(Field::ItemType,item))
     return false;
   if (!args[2] || !args[3])
     return false;
@@ -47,7 +48,7 @@ bool GameRuntime::hitNpc(Handle p, void **args) {
   if (!s || !s->current.active || !args)
     return false;
   auto item = *static_cast<Handle *>(args[0]);
-  if (!item || api_.read<int>(Field::ItemType, item) != 24)
+  if (!item || !findWeapon(api_.read<int>(Field::ItemType,item)) || s->combatItemId!=api_.read<int>(Field::ItemType,item))
     return false;
   s->pendingNpc = 0;
   auto sweep = collectDamageSweep(s->previous, s->current);
@@ -79,7 +80,7 @@ bool GameRuntime::hitNpc(Handle p, void **args) {
   s->pendingSlot = id;
   s->pendingAttack = sweep.attackId;
   const auto &attack=sweep.attackId==s->current.attackId?s->current:s->previous;
-  auto power=woodenMeleePower(attack.charged,attack.combo);
+  auto power=attack.itemId==2273 ? AttackPower{attack.charged?2.2f:1.f,attack.charged?1.4f:1.f} : woodenMeleePower(attack.charged,attack.combo);
   auto &damage=*static_cast<int *>(args[2]);
   auto &knockback=*static_cast<float *>(args[3]);
   damage=scaleDamage(damage,power.damage);

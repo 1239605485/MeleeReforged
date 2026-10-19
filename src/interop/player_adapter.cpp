@@ -70,7 +70,7 @@ void GameRuntime::update(Handle p) {
     s->clear();
     return;
   }
-  if(api_.read<int>(Field::ItemType,item)!=24){
+  if(!findWeapon(api_.read<int>(Field::ItemType,item))){
     if(s->seen)s->clearEquipment();
     updateGenericCarry(p,*s,item);
     return;
@@ -96,8 +96,11 @@ void GameRuntime::action(Handle p) {
     s->clear();
     return;
   }
-  if(api_.read<int>(Field::ItemType,item)!=24)return;
+  auto itemId=api_.read<int>(Field::ItemType,item);
+  auto weapon=findWeapon(itemId);if(!weapon)return;
+  if(s->combatItemId && s->combatItemId!=itemId)s->clearEquipment();
   if(s->presentation.itemId)s->clearEquipment();
+  s->combatItemId=itemId;
   auto now = invokeStatic<unsigned>(api_.tick);
   if (s->seen && now == s->lastTick) {
     if (s->current.active || s->carry.ready())
@@ -113,7 +116,7 @@ void GameRuntime::action(Handle p) {
   in.tick = now;
   in.playerGeneration = s->generation;
   in.worldGeneration = s->world;
-  in.itemId = 24;
+  in.itemId = itemId;
   in.direction = api_.read<int>(Field::Direction, p);
   in.gravity = api_.read<float>(Field::Gravity, p);
   int animationMax=api_.read<int>(Field::AnimationMax,p);
@@ -123,7 +126,7 @@ void GameRuntime::action(Handle p) {
   in.dtSeconds = dt;
   in.grip = pos + Vec2{api_.read<int>(Field::Width, p) * .5f,
                        api_.read<int>(Field::Height, p) * .4f};
-  in.bladeLength = 31.f * scale;
+  in.bladeLength = weapon->bladeLength * scale;
   auto intent=s->button.advance(api_.read<bool>(Field::ControlUseItem,p),dt);
   s->pendingNormal=s->pendingNormal || intent.normal;
   s->pendingHeavy=s->pendingHeavy || intent.heavy;
@@ -157,7 +160,7 @@ void GameRuntime::action(Handle p) {
     if(s->previous.active) api_.write(Field::Animation,p,0);
     s->trail.clear();
     if(s->carry.ready()) {
-      pose=evaluatePose(*findWeapon(24),0,0,in.grip,in.direction,in.gravity,in.bladeLength);
+      pose=evaluatePose(*weapon,0,0,in.grip,in.direction,in.gravity,in.bladeLength);
       pose.active=pose.damaging=false;
       apply(p,*s);
     }
@@ -169,7 +172,7 @@ void GameRuntime::action(Handle p) {
 }
 void GameRuntime::apply(Handle p, PlayerState &s) {
   auto &pose = s.current;
-  if(pose.damaging && s.steppedAttack!=pose.attackId) {
+  if(pose.itemId==24 && pose.damaging && s.steppedAttack!=pose.attackId) {
     s.steppedAttack=pose.attackId;
     auto mount=api_.read<Handle>(Field::Mount,p);
     bool allowed=(!mount || !invoke<bool>(api_.mountActive,mount)) &&
@@ -188,7 +191,7 @@ void GameRuntime::apply(Handle p, PlayerState &s) {
   float drawAngle=pose.angle,localArm=pose.armAngle;
   float drawBlend=1;
   if(s.drawingFromWaist && pose.active) {
-    const auto &profile=pose.charged?findWeapon(24)->heavy[pose.combo]:findWeapon(24)->swings[pose.combo];
+    const auto &profile=pose.charged?findWeapon(pose.itemId)->heavy[pose.combo]:findWeapon(pose.itemId)->swings[pose.combo];
     drawBlend=pose.charging?std::clamp(pose.chargeLevel*5,0.f,1.f):
        (pose.phase==Phase::Windup?std::clamp(pose.progress/profile.windup,0.f,1.f):1.f);
     drawAngle=2.35f+std::remainder(pose.angle-2.35f,6.283185307f)*drawBlend;

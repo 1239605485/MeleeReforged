@@ -28,6 +28,7 @@ struct AttackInput {
   float chargeLevel{};
 };
 struct AttackPose {
+  int itemId{24};
   std::uint64_t attackId{}, tick{};
   int combo{};
   Phase phase{Phase::Idle};
@@ -46,5 +47,9 @@ struct WeaponProfile {
   int itemId;
   std::array<SwingProfile, 3> swings;
   std::array<SwingProfile, 3> heavy;
+  float bladeLength{31.f};
+  std::array<float,3> normalTiming{{1,1,1}};
+  float heavyTiming{1.5f};
+  int heavyStages{3};
 };
 } // namespace mr

@@ -1,10 +1,10 @@
 {
   "pkgId": "liuxin.melee.reforged",
-  "name": "近战重铸 · 武器与工具佩戴",
+  "name": "近战重铸 · 武士刀",
   "author": "liuxin",
-  "description": "单机木剑三连击、蓄力重击与金白剑气；增加常规武器、鞭子、枪械以及镐、斧、锤和复合工具的分类佩戴。其他物品保留原版攻击与采集行为。需要支持驻留握手的 KernelLoader。",
-  "version": "0.5.0",
-  "versionCode": 8,
+  "description": "单机木剑玩法及武器工具佩戴；新增武士刀独立三连快斩、蓄力居合与冷白淡蓝特效。武士刀满蓄伤害2.2倍、击退1.4倍，不产生木剑剑气。安卓触屏沿用现有攻击输入。需要支持驻留握手的 KernelLoader。",
+  "version": "0.6.0",
+  "versionCode": 9,
   "dependence": [],
   "support": {
     "android": {

@@ -5,7 +5,7 @@
 namespace mr {
 void GameRuntime::launchWave(Handle player,PlayerState &state,Handle item){
  const auto &pose=state.current;
- if(!api_.wavesReady || !pose.active || pose.charging || !pose.charged || pose.combo!=0 ||
+ if(pose.itemId!=24 || !api_.wavesReady || !pose.active || pose.charging || !pose.charged || pose.combo!=0 ||
     state.launchedAttack==pose.attackId)return;
  const auto &profile=findWeapon(24)->heavy[0];
  if(pose.progress<profile.windup+profile.swing*.45f)return;
