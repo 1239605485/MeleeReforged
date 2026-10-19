@@ -67,7 +67,7 @@ AttackPose AttackController::advance(const AttackInput &in) {
   float cycle = in.cycleSeconds * (charged_ ? w->heavyTiming : w->normalTiming[pose_.combo]);
   for (int n = 0; elapsed_ + 1e-6f >= cycle && n < 3; ++n) {
     elapsed_ -= cycle;
-    nextCombo_ = (pose_.combo + 1) % 3;
+    nextCombo_ = (pose_.combo + 1) % (charged_?w->heavyStages:w->normalStages);
     if(in.attacking && in.chargedAttack && !charged_) {
       charged_=true;
       nextCombo_=0;

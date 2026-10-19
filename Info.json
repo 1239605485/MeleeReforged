@@ -1,10 +1,10 @@
 {
   "pkgId": "liuxin.melee.reforged",
-  "name": "近战重铸 · 武士刀",
+  "name": "近战重铸 · 武士刀居合",
   "author": "liuxin",
-  "description": "单机木剑及武器工具佩戴；武士刀按住攻击连续三连，方向向下同时按住攻击蓄力，满蓄松开攻击释放居合。刀光跟随挥刃轨迹。武士刀满蓄伤害2.2倍、击退1.4倍。需要支持驻留握手的 KernelLoader。",
-  "version": "0.6.1",
-  "versionCode": 10,
+  "description": "单机木剑玩法及武器工具佩戴保留。武士刀改为单次拔刀斩与停腕收刀：轻点攻击后松开普攻，长按满蓄后松开释放居合；取消向下组合操作。新增分帧刀光与刀鞘，校正武士刀握点和镜像。需要支持驻留握手的 KernelLoader。",
+  "version": "0.7.0",
+  "versionCode": 11,
   "dependence": [],
   "support": {
     "android": {

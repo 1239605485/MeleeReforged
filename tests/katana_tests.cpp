@@ -9,7 +9,7 @@ int main(){
  auto a=mr::evaluatePose(*w,0,.3f,{},1,1,34,false);
  auto b=mr::evaluatePose(*w,0,.3f,{},-1,-1,34,false);
  assert(std::abs(a.tip.x+b.tip.x)<.001f && std::abs(a.tip.y+b.tip.y)<.001f);
- auto h=mr::evaluatePose(*w,0,.5f,{},1,1,34,true);
+ auto h=mr::evaluatePose(*w,0,.23f,{},1,1,34,true);
  assert(h.damaging);
  auto prior=mr::evaluatePose(*w,0,.1f,{},1,1,34,true);
  prior.attackId=h.attackId=1;

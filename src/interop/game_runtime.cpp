@@ -20,7 +20,7 @@ bool GameRuntime::start() {
     return false;
   }
   ready_.store(true);
-  log("MeleeReforged 0.6.1 active: single-player; katana attack hold repeats combo; down+attack press selects charge, full release performs one iai cut; swept textured trail. Wooden sword and equipment carry preserved.");
+  log("MeleeReforged 0.7.0 active: single-player; katana single draw cut on tap release, .55s charge on full hold release; calibrated mirrored grip, textured fan and scabbard; wooden sword preserved.");
   return true;
 }
 void GameRuntime::stop() {

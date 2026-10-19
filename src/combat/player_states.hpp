@@ -1,7 +1,6 @@
 #pragma once
 #include "attack_controller.hpp"
 #include "attack_button.hpp"
-#include "katana_input.hpp"
 #include "carry_state.hpp"
 #include "sword_wave.hpp"
 #include "carry/state.hpp"
@@ -16,7 +15,6 @@ struct Impact {
 struct PlayerState {
   AttackController controller;
   AttackButton button;
-  KatanaInput katanaInput;
   CarryState carry;
   CarryPresentationState presentation;
   std::array<SwordWave,4> waves{};

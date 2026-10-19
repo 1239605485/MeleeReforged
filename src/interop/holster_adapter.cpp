@@ -1,6 +1,9 @@
 #include "game_runtime.hpp"
 #include "draw_bridge.hpp"
 #include "weapons/weapon_registry.hpp"
+#include "render/weapon_sprite.hpp"
+#include "effect_atlas.hpp"
+#include "katana_vfx.hpp"
 namespace mr {
 void GameRuntime::drawCarry(Handle ctx,Handle player,PlayerState &state,bool back){
  if(state.current.active || !state.seen || (state.carry.amount()>=.5f)!=back)return;
@@ -26,7 +29,12 @@ void GameRuntime::drawCarry(Handle ctx,Handle player,PlayerState &state,bool bac
  float width=float(api_.read<int>(Field::TextureWidth,sword)),height=float(api_.read<int>(Field::TextureHeight,sword));
  if(width<5 || height<5 || width>4096 || height>4096)return;
  Vec2 axis{width-4,4-height};float scale=profile->bladeLength*api_.read<float>(Field::ItemScale,item)/length(axis);
- enqueueDraw(api_,ctx,sword,grip-screen,{255,255,255,255},angle-std::atan2(axis.y,axis.x),{2,height-2},{scale,scale});
+ if(profile->itemId==2273){
+  auto tip=grip+Vec2{std::cos(angle),std::sin(angle)}*(profile->bladeLength*api_.read<float>(Field::ItemScale,item));
+  auto sprite=weaponSprite(profile->itemId,width,height,grip,tip,direction,gravity);
+  enqueueDraw(api_,ctx,sword,grip-screen,{255,255,255,255},sprite.rotation,sprite.origin,{sprite.scale,sprite.scale},false,sprite.effects);
+  drawKatanaSheath(api_,ctx,effectAtlas(api_,true),grip,screen,direction,gravity,profile->bladeLength*api_.read<float>(Field::ItemScale,item));
+ }else enqueueDraw(api_,ctx,sword,grip-screen,{255,255,255,255},angle-std::atan2(axis.y,axis.x),{2,height-2},{scale,scale});
 }
 void GameRuntime::drawBack(Handle ctx){
  if(!validScene() || !ctx || api_.read<float>(Field::Shadow,ctx)>0 ||

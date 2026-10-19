@@ -128,12 +128,9 @@ void GameRuntime::action(Handle p) {
                        api_.read<int>(Field::Height, p) * .4f};
   in.bladeLength = weapon->bladeLength * scale;
   bool canStart=!s->current.active || s->current.charging;
-  bool attackDown=api_.read<bool>(Field::ControlUseItem,p);
-  auto intent=itemId==2273?s->katanaInput.advance(attackDown,
-      api_.katanaInputReady && api_.read<bool>(Field::ControlDown,p),dt,canStart):s->button.advance(attackDown,dt);
-  // Katana repeats while held, without turning a long normal hold into charging.
-  // Wooden sword retains its user-tested press/release behavior.
-  s->pendingNormal=itemId==2273?intent.normal:(s->pendingNormal || intent.normal);
+  auto intent=s->button.advance(api_.read<bool>(Field::ControlUseItem,p),dt);
+  // Touch: tap release cuts once; full hold release performs the heavy.
+  s->pendingNormal=s->pendingNormal || intent.normal;
   s->pendingHeavy=s->pendingHeavy || intent.heavy;
   in.charging=intent.holding && canStart;
   in.chargeLevel=intent.level;

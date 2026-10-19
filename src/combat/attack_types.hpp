@@ -51,5 +51,6 @@ struct WeaponProfile {
   std::array<float,3> normalTiming{{1,1,1}};
   float heavyTiming{1.5f};
   int heavyStages{3};
+  int normalStages{3};
 };
 } // namespace mr

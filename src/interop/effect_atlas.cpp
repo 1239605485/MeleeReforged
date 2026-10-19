@@ -52,7 +52,7 @@ Handle effectAtlas(RuntimeApi &api,bool katana) {
   invoke<void>(xnaCtor,xna,unity);
   release(unityRoot); // XNA owns the Unity texture reference from here.
   atlas=xna;
-  log(katana?"Katana atlas ready: four compact shapes, GC retained.":"Slash atlas ready: six textured frames, core/halo, GC retained.");
+  log(katana?"Katana atlas ready: 16 sweep frames, charge/hit and scabbard, GC retained.":"Slash atlas ready: six textured frames, core/halo, GC retained.");
   return atlas;
 }
 }

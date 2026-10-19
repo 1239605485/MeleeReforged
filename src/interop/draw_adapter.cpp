@@ -5,6 +5,7 @@
 #include "weapons/weapon_registry.hpp"
 #include "effect_atlas.hpp"
 #include "katana_vfx.hpp"
+#include "render/weapon_sprite.hpp"
 namespace mr {
 static Handle assetTexture(RuntimeApi &a, Handle asset) {
   return a.assetTexture(asset);
@@ -101,9 +102,8 @@ bool GameRuntime::draw(Handle ctx) {
     for(std::size_t i=0;i<s->trail.size() && echoes<2;++i){
       const auto &old=s->trail[i].pose;
       if(old.attackId!=pose.attackId || !old.damaging || pose.tick<=old.tick || pose.tick-old.tick>4)continue;
-      float oldAngle=std::atan2(old.tip.y-old.grip.y,old.tip.x-old.grip.x)-std::atan2(bladeAxis.y,bladeAxis.x);
-      float ghostScale=old.bladeLength/length(bladeAxis);
-      enqueueDraw(api_,ctx,sword,old.grip-screen,{150,205,255,static_cast<unsigned char>(45-echoes*15)},oldAngle,{2,height-2},{ghostScale,ghostScale});
+      auto ghost=weaponSprite(itemId,width,height,old.grip,old.tip,old.direction,old.gravity);
+      enqueueDraw(api_,ctx,sword,old.grip-screen,{150,205,255,static_cast<unsigned char>(65-echoes*20)},ghost.rotation,ghost.origin,{ghost.scale,ghost.scale},false,ghost.effects);
       ++echoes;
     }
   }
@@ -111,11 +111,19 @@ bool GameRuntime::draw(Handle ctx) {
   float angle=std::atan2(pose.tip.y-pose.grip.y,pose.tip.x-pose.grip.x)-
               std::atan2(bladeAxis.y,bladeAxis.x);
   float scale=length(pose.tip-pose.grip)/length(bladeAxis);
+  auto sprite=weaponSprite(itemId,width,height,pose.grip,pose.tip,pose.direction,pose.gravity);
+  if(itemId!=2273)sprite={{2,height-2},{width-2,2},angle,scale,0};
   if (!enqueueDraw(api_,ctx,sword,pose.grip-screen,{255,255,255,255},
-               angle,{2,height-2},{scale,scale})) {
+               sprite.rotation,sprite.origin,{sprite.scale,sprite.scale},false,sprite.effects)) {
     renderFailure();return false;
   }
   drawEffects(true);
+  if(itemId==2273){
+    Vec2 sheathGrip=waistGrip(worldPosition,api_.read<int>(Field::Width,p),api_.read<int>(Field::Height,p),pose.direction,pose.gravity);
+    if(pose.charging)sheathGrip=pose.grip;
+    drawKatanaSheath(api_,ctx,atlas,sheathGrip,screen,pose.direction,pose.gravity,pose.bladeLength);
+  }
+
   auto now = invokeStatic<unsigned>(api_.tick);
   for (const auto &hit : s->impacts) {
     if (!hit.active || now < hit.tick || now - hit.tick > 12)
