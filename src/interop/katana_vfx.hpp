@@ -1,10 +1,11 @@
 #pragma once
 #include "draw_bridge.hpp"
 #include "combat/player_states.hpp"
-#include "weapons/weapon_registry.hpp"
+#include "render/katana_trail.hpp"
 #include <algorithm>
 namespace mr {
-// Consumes simulation snapshots only; repeated render passes spawn nothing.
+// All positions come from simulation blade samples. No fixed slash decal,
+// render-driven lifetime, or extra gameplay projectile.
 inline void drawKatanaEffects(RuntimeApi &api,Handle ctx,Handle atlas,const PlayerState &s,Vec2 screen){
  if(!atlas)return;
  const auto &p=s.current;
@@ -15,22 +16,27 @@ inline void drawKatanaEffects(RuntimeApi &api,Handle ctx,Handle atlas,const Play
    toNativeColor({170,215,255,static_cast<unsigned char>(std::clamp(alpha,0.f,1.f)*255)}),
    angle,Vec2{32,32},scale,0,0);
  };
- auto worldAngle=[&](float a){return std::atan2(std::sin(a)*p.gravity,std::cos(a)*p.direction);};
  if(p.charging){
-  float breathe=.7f+.3f*std::sin(float(p.tick%120)*.16f);
-  stamp(3,p.grip+(p.tip-p.grip)*.72f,0,{.25f,.25f},p.chargeLevel*.55f*breathe);
-  stamp(2,p.tip,worldAngle(p.angle),{.16f,.16f},p.chargeLevel*.7f*breathe);
+  // Compact inward-moving glints reveal the blade and charge direction.
+  Vec2 blade=p.tip-p.grip;
+  float pulse=.75f+.25f*std::sin(float(p.tick%120)*.16f);
+  stamp(3,p.grip+blade*.72f,0,{.35f,.35f},p.chargeLevel*.6f*pulse);
+  for(int i=0;i<4;++i){
+   float t=std::fmod(float(p.tick%120)*.035f+i*.25f,1.f);
+   Vec2 at=p.grip+blade*(.35f+.5f*t)+Vec2{(1-t)*8*p.direction,(1-t)*-12*p.gravity};
+   stamp(2,at,0,{.11f,.11f},p.chargeLevel*t*.65f);
+  }
+  if(p.chargeLevel>=.999f)stamp(2,p.tip,0,{.24f,.24f},.55f*pulse);
   return;
  }
- const auto &profile=p.charged?katana().heavy[p.combo]:katana().swings[p.combo];
- float age=(p.progress-profile.windup)*s.cycleSeconds*(p.charged?katana().heavyTiming:katana().normalTiming[p.combo]);
- if(age>=0 && age<.15f){
-  float fade=std::min(age/.025f,1.f)*std::clamp(1-age/.15f,0.f,1.f);
-  auto center=p.grip+(p.tip-p.grip)*.65f;
-  float angle=worldAngle(p.charged?-.12f:p.angle);
-  float span=p.bladeLength*(p.charged?1.75f:1.25f)/60.f;
-  stamp(p.charged?1:0,center,angle+(p.charged?0.f:.785398f),{span,span},fade*.8f);
-  if(p.charged && age>=.05f)stamp(1,center+Vec2{0,3*p.gravity},angle,{span,.65f*span},fade*.27f);
+ auto ribbon=katanaTrail(s.previous,p,s.trail);
+ for(std::size_t i=0;i<ribbon.count;++i){
+  const auto &v=ribbon.segments[i];Vec2 d=v.to-v.from;float span=length(d);
+  if(span<.02f || span>p.bladeLength*2)continue;
+  auto center=(v.from+v.to)*.5f;float a=std::atan2(d.y,d.x);
+  // Soft outer strip and sharp inner strip share exactly the same trajectory.
+  stamp(0,center,a,{(span+3)/60.f,p.charged?.95f:.6f},v.fade*(p.charged?.65f:.45f));
+  stamp(1,center,a,{(span+2)/60.f,p.charged?1.35f:.8f},v.fade*.92f);
  }
  auto now=invokeStatic<unsigned>(api.tick);
  for(const auto &hit:s.impacts){

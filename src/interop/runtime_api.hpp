@@ -22,6 +22,7 @@ struct ResolveReport {
 };
 enum class Field : std::size_t {
   ControlUseItem,
+  ControlDown,
   BodyRotation,
   BodyPosition,
   LegRotation,
@@ -97,6 +98,7 @@ public:
   BoundMethod backDraw,weaponDamage,weaponKnockback,applyDamage,hitSource;
   bool wavesReady{};
   bool carryReady{};
+  bool katanaInputReady{};
   ResolveReport resolve();
   Handle assetTexture(Handle asset) const;
   BoundMethod method(const char *ns, const char *type, const char *name,
