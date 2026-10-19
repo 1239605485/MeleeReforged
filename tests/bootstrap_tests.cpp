@@ -6,6 +6,7 @@ static int starts, stops;
 namespace mr {
 GameRuntime &runtime() { static GameRuntime instance; return instance; }
 bool GameRuntime::start() { ++starts; return true; }
+void GameRuntime::startWeaponApi(kernel_mod_handle_t*) {}
 void GameRuntime::stop() { ++stops; }
 }
 int main() {

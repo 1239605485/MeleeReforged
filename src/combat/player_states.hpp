@@ -1,5 +1,6 @@
 #pragma once
 #include "attack_controller.hpp"
+#include "weapon_action.h"
 #include "attack_button.hpp"
 #include "carry_state.hpp"
 #include "sword_wave.hpp"
@@ -37,6 +38,10 @@ struct PlayerState {
   std::uintptr_t identity{}, world{};
   bool seen{};
   int combatItemId{};
+  wa_pose apiPose{};
+  bool apiPoseActive{};
+  int apiItemId{};
+  std::uint64_t apiTick{~std::uint64_t(0)};
   std::array<Impact, 8> impacts{};
   std::size_t nextImpact{};
   std::uintptr_t pendingNpc{};

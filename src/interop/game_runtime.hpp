@@ -3,9 +3,12 @@
 #include "hook_set.hpp"
 #include "runtime_api.hpp"
 #include <atomic>
+#include "weapon_action.h"
 namespace mr {
 class GameRuntime {
   RuntimeApi api_;
+  kernel_mod_handle_t *weaponApiOwner_{};
+  bool weaponApiAttached_{};
   PlayerStates states_;
   std::atomic<bool> ready_{false};
   bool logged_{};
@@ -14,6 +17,13 @@ class GameRuntime {
 
 public:
   bool start();
+  void startWeaponApi(kernel_mod_handle_t*);
+  void stopWeaponApi();
+  bool updateWeaponApi(Handle,PlayerState&,Handle);
+  void cancelWeaponApiPlayer(Handle);
+  void restoreWeaponApiPoses();
+  void drawWeaponApi(Handle,uint32_t);
+  bool drawWeaponApiBase(Handle,Handle,PlayerState&);
   void stop();
   bool validScene();
   PlayerState *state(Handle);

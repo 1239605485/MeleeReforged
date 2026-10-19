@@ -24,6 +24,7 @@ bool GameRuntime::start() {
   return true;
 }
 void GameRuntime::stop() {
+  stopWeaponApi();
   ready_.store(false);
   removeNativeHooks();
   states_.clear();

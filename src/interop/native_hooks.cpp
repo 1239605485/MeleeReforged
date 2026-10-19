@@ -54,12 +54,15 @@ void hitHook(Handle p, Handle item, NativeRect rectangle, int damage,
   runtime().afterHit(p, args);
 }
 void drawHook(Handle info, Handle metadata) {
+  runtime().drawWeaponApi(info,WA_BEFORE_ITEM);
   if (!runtime().draw(info))
     originalDraw(info, metadata);
+  runtime().drawWeaponApi(info,WA_AFTER_ITEM);
 }
 void backDrawHook(Handle info,Handle metadata){
   originalBackDraw(info,metadata);
   runtime().drawBack(info);
+  runtime().drawWeaponApi(info,WA_BEHIND_PLAYER);
 }
 } // namespace
 bool installNativeHooks(RuntimeApi &a) {

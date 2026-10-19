@@ -3,8 +3,8 @@
   "name": "近战重铸 · 武士刀居合",
   "author": "liuxin",
   "description": "单机木剑玩法及武器工具佩戴保留。武士刀改为单次拔刀斩与停腕收刀：轻点攻击后松开普攻，长按满蓄后松开释放居合；取消向下组合操作。新增分帧刀光与刀鞘，校正武士刀握点和镜像。需要支持驻留握手的 KernelLoader。",
-  "version": "0.7.0",
-  "versionCode": 11,
+  "version": "0.8.0",
+  "versionCode": 12,
   "dependence": [],
   "support": {
     "android": {

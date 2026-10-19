@@ -4,6 +4,7 @@
 #include <mutex>
 #include <string>
 extern "C" {
+__attribute__((visibility("default"))) const wa_api_v1 *kernel_weapon_action_api_v1 = nullptr;
 // 1 requests residency; matching KernelLoader acknowledges with 2.
 __attribute__((visibility("default"))) int kernel_mod_residency_v1 = 1;
 __attribute__((visibility("default"))) void (*mod_logger_write)(int,
@@ -22,10 +23,10 @@ void init(kernel_mod_handle_t *h) {
     mr::log("KernelLoader residency handshake missing; install the matching loader and restart.");
     return;
   }
-  mr::runtime().start();
+  if(mr::runtime().start())mr::runtime().startWeaponApi(h);
 }
 void cleanup(kernel_mod_handle_t *) { mr::runtime().stop(); }
-kernel_mod_info_t info{"liuxin.melee.reforged", 11, 1, "0.7.0"};
+kernel_mod_info_t info{"liuxin.melee.reforged", 12, 1, "0.8.0"};
 kernel_mod_info_t *getInfo() { return &info; }
 kernel_mod_ops_t ops{init, cleanup, getInfo};
 } // namespace

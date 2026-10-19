@@ -35,6 +35,7 @@ bool GameRuntime::draw(Handle ctx) {
     return false;
   auto item = invoke<Handle>(api_.heldItem, p);
   if(!item)return false;
+  if(s->apiPoseActive)return drawWeaponApiBase(ctx,p,*s);
   auto itemId=api_.read<int>(Field::ItemType,item);
   if(!findWeapon(itemId))
     return drawGenericCarry(ctx,p,*s,false);

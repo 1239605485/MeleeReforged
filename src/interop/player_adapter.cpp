@@ -25,6 +25,9 @@ void GameRuntime::frame() {
     return;
   bool inWorld =
       !invokeStatic<bool>(api_.menu) && api_.read<int>(Field::NetMode) == 0;
+  if(!inWorld || api_.read<bool>(Field::Paused)){
+    restoreWeaponApiPoses();
+  }
   if (inWorld != wasInWorld_) {
     states_.clear();
     for (auto &g : npcGenerations_)
@@ -67,9 +70,11 @@ void GameRuntime::update(Handle p) {
     return;
   auto item = invoke<Handle>(api_.heldItem, p);
   if (!item || api_.read<bool>(Field::Dead, p) || !api_.read<bool>(Field::Active, p)) {
+    cancelWeaponApiPlayer(p);
     s->clear();
     return;
   }
+  if(updateWeaponApi(p,*s,item))return;
   if(!findWeapon(api_.read<int>(Field::ItemType,item))){
     if(s->seen)s->clearEquipment();
     updateGenericCarry(p,*s,item);

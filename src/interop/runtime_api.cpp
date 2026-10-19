@@ -301,6 +301,8 @@ ResolveReport RuntimeApi::resolve() {
     if (!all[i].metadata || !all[i].pointer)
       return {false, FailureCode::SignatureMismatch, names[i]};
   if(!backDraw.pointer)return {false,FailureCode::SignatureMismatch,"Backpack draw layer"};
+  secondaryInputReady=field(Field::ApiSecondaryInput,"Terraria","Player","controlUseTile",1);
+  weaponApiReady=field(Field::ApiPlayers,"Terraria","Main","player",sizeof(Handle));
   bool ok = true;
   auto f = [&](Field s, const char *ns, const char *type, const char *n,
                std::size_t size) {
